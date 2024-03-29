@@ -1,4 +1,4 @@
-FROM localhost/osbuild-cfg as osbuildcfg
+FROM ghcr.io/cgwalters/osbuild-cfg as osbuildcfg
 FROM quay.io/fedora/fedora:40
 # Inject your blueprint
 COPY myblueprint.toml /tmp/myblueprint.toml

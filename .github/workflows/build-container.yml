@@ -42,5 +42,11 @@ jobs:
           tags: latest
           platforms: linux/amd64, linux/arm64
           containerfiles: Containerfile
+      - name: Build test and verify
+        run: |
+          set -xeuo pipefail
+          cd test-containers
+          podman build -t localhost/test .
+          podman run --rm -ti localhost/test cat /usr/lib/tmpfiles.d/osbuild-cfg-root-ssh.conf
       - name: Push
         run: buildah manifest push --all ${{ steps.build.outputs.image-with-tag }} docker://${{ steps.build.outputs.image-with-tag }}
