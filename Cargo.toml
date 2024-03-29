@@ -19,6 +19,8 @@ serde = { features = ["derive"], version = "1.0.197" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 fn-error-context = "0.2.1"
+rustix = { version = "0.38.32", features = ["process"] }
+either = "1.10.0"
 
 [dev-dependencies]
 indoc = "2"

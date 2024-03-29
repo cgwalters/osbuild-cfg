@@ -1,0 +1,13 @@
+[[customizations.sshkey]]
+user = "root"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA1hVwAoNDa64+woHYxkHfdu6qmdC1BsLXReeQz/CBri example@demo"
+[[packages]]
+name = "httpd"
+version = "2.4"
+[[packages]]
+name = "mariadb-server"
+[[packages]]
+name = "mariadb"  
+[[packages]]
+name = "php"
+version = "5.1"

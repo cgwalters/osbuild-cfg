@@ -118,16 +118,22 @@ impl Render for Blueprint {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cap_std_ext::cap_std;
+    use cap_std_ext::{cap_std, cap_tempfile::TempDir};
     use indoc::indoc;
+
+    fn new_tmp() -> Result<(TempDir, TempDir)> {
+        let root = cap_std_ext::cap_tempfile::TempDir::new(cap_std::ambient_authority())?;
+        let target = cap_std_ext::cap_tempfile::TempDir::new(cap_std::ambient_authority())?;
+        Ok((root, target))
+    }
 
     #[test]
     fn test_empty() -> Result<()> {
-        let root = &cap_std_ext::cap_tempfile::TempDir::new(cap_std::ambient_authority())?;
+        let (root, target) = new_tmp()?;
 
         let empty: Blueprint = toml::from_str("")?;
-        let mut r = Rendered::new()?;
-        let changed = empty.render(root, &mut r).unwrap();
+        let mut r = Rendered::new(&target)?;
+        let changed = empty.render(&root, &mut r).unwrap();
         assert!(r.exec.is_empty());
         assert_eq!(r.filesystem.entries()?.count(), 0);
         assert!(!changed);
@@ -145,8 +151,7 @@ mod tests {
 
     #[test]
     fn test_sshkeys() -> Result<()> {
-        let root = &cap_std_ext::cap_tempfile::TempDir::new(cap_std::ambient_authority())?;
-
+        let (root, target) = new_tmp()?;
         // Empty keys
 
         let blueprint: Blueprint = toml::from_str(indoc! { r#"
@@ -155,8 +160,8 @@ mod tests {
             key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA1hVwAoNDa64+woHYxkHfdu6qmdC1BsLXReeQz/CBri example@demo"
             "#
         })?;
-        let mut r = Rendered::new()?;
-        let changed = blueprint.render(root, &mut r).unwrap();
+        let mut r = Rendered::new(&target)?;
+        let changed = blueprint.render(&root, &mut r).unwrap();
         // Nothing to execute for this
         assert!(r.exec.is_empty());
         assert_eq!(r.filesystem.entries()?.count(), 1);
@@ -173,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_packages() -> Result<()> {
-        let root = &cap_std_ext::cap_tempfile::TempDir::new(cap_std::ambient_authority())?;
+        let (root, target) = new_tmp()?;
 
         let blueprint: Blueprint = toml::from_str(indoc! { r#"
             [[packages]]
@@ -188,8 +193,8 @@ mod tests {
             version = "5.1"
             "#
         })?;
-        let mut r = Rendered::new()?;
-        let changed = blueprint.render(root, &mut r).unwrap();
+        let mut r = Rendered::new(&target)?;
+        let changed = blueprint.render(&root, &mut r).unwrap();
         assert!(changed);
         let dnf = r.exec.pop().unwrap().0;
         let dnf = &dnf.iter().map(|s| s.as_str()).collect::<Vec<_>>();
