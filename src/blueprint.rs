@@ -125,7 +125,7 @@ mod tests {
     fn test_empty() -> Result<()> {
         let root = &cap_std_ext::cap_tempfile::TempDir::new(cap_std::ambient_authority())?;
 
-        let empty: Blueprint = toml::from_str("[customizations]")?;
+        let empty: Blueprint = toml::from_str("")?;
         let mut r = Rendered::new()?;
         let changed = empty.render(root, &mut r).unwrap();
         assert!(r.exec.is_empty());
@@ -136,12 +136,9 @@ mod tests {
 
     #[test]
     fn test_invalid() -> Result<()> {
-        let root = &cap_std_ext::cap_tempfile::TempDir::new(cap_std::ambient_authority())?;
-        for case in ["", "[foo]\nbar=baz"] {
-            let empty: Blueprint = toml::from_str(case)?;
-            let mut r = Rendered::new()?;
-            assert!(empty.render(root, &mut r).is_err());
-            assert_eq!(root.entries()?.count(), 0);
+        for case in ["[foo]\nbar=\"baz\""] {
+            let r: Result<Blueprint> = toml::from_str(case).map_err(Into::into);
+            assert!(r.is_err());
         }
         Ok(())
     }
