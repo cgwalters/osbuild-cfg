@@ -13,7 +13,7 @@ In the future, more formats may be supported such as Kickstart, Butane/Ignition,
 
 ```
 # Fetch this tool as a container image
-FROM quay.io/cgwalters/osbuild-cfg as osbuildcfg
+FROM ghcr.io/cgwalters/osbuild-cfg as osbuildcfg
 # Derive from your chosen bootable container image
 FROM <bootc base image>
 # Inject your blueprint

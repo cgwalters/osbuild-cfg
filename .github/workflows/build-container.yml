@@ -1,0 +1,46 @@
+name: Build
+on:
+  push:
+    branches: ["main"]
+    # Publish semver tags as releases.
+    tags: ["v*.*.*"]
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  push-container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+      - name: Update podman and buildah
+        run:  |
+            # from https://askubuntu.com/questions/1414446/whats-the-recommended-way-of-installing-podman-4-in-ubuntu-22-04
+            ubuntu_version='22.04'
+            key_url="https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_${ubuntu_version}/Release.key"
+            sources_url="https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_${ubuntu_version}"
+            echo "deb $sources_url/ /" | sudo tee /etc/apt/sources.list.d/devel-kubic-libcontainers-unstable.list
+            curl -fsSL $key_url | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg > /dev/null
+            sudo apt update
+            sudo apt install -y podman buildah
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Login
+        run: podman login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} ${{ env.REGISTRY }}
+      - name: Build Image
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.REGISTRY }}/${{ github.repository }}
+          tags: latest
+          platforms: linux/amd64, linux/arm64
+          containerfiles: Containerfile
+      - name: Push
+        run: buildah manifest push --all ${{ steps.build.outputs.image-with-tag }} docker://${{ steps.build.outputs.image-with-tag }}

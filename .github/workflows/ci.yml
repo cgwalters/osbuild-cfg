@@ -46,5 +46,9 @@ jobs:
         curl -fsSL $key_url | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg > /dev/null
         sudo apt update
         sudo apt install -y podman
-      - name: Build image
-        run: bootc internal-tests run-container-integration
+    - uses: actions/checkout@v4
+    - name: Build test image
+      run: |
+        set -xeuo pipefail
+        cd test-containers
+        podman build -t localhost/test .
