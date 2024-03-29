@@ -1,7 +1,7 @@
 FROM localhost/osbuild-cfg as osbuildcfg
-FROM quay.io/fedora/fedora-coreos:testing-devel
+FROM quay.io/fedora/fedora:40
 # Inject your blueprint
 COPY myblueprint.toml /tmp/myblueprint.toml
-COPY --from=osbuildcfg /usr/bin/osbuildcfg /osbuildcfg
-RUN /osbuildcfg /tmp/myblueprint.toml
+COPY --from=osbuildcfg /usr/bin/osbuild-cfg /osbuild-cfg
+RUN /osbuild-cfg blueprint /tmp/myblueprint.toml
 

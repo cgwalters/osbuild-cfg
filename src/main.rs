@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub(crate) mod blueprint;
+mod osrelease;
 
 use std::process::Command;
 use std::{io::Read, path::Path};
@@ -11,6 +12,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use cap_std_ext::cap_std::{self, fs::Dir};
 use clap::{Parser, Subcommand};
 use fn_error_context::context;
+
+use crate::osrelease::verify_osrelease;
 
 pub(crate) const USR_TMPFILES: &str = "usr/lib/tmpfiles.d";
 
@@ -141,12 +144,18 @@ fn run() -> Result<()> {
         if target_dir.entries()?.next().is_some() {
             anyhow::bail!("Refusing to operate on non-empty directory");
         }
+    } else {
+        if !rustix::process::getuid().is_root() {
+            anyhow::bail!("This program must be run as root (in non --dry-run mode)");
+        }
+        verify_osrelease()?;
     }
     let mut rendered = Rendered::new(target_dir)?;
 
     match opt.cmd {
         Cmd::Blueprint(opts) => {
             let blueprint_path = &opts.path;
+            println!("Processing blueprint: {blueprint_path}");
             let mut reader = reader_or_stdin(&blueprint_path)?;
             let mut buf = String::new();
             reader
@@ -156,7 +165,7 @@ fn run() -> Result<()> {
                 toml::from_str(&buf).with_context(|| format!("Parsing {}", blueprint_path))?;
             blueprint.render(root, &mut rendered)?;
             if should_consume {
-                tracing::info!("Removing {}", blueprint_path);
+                println!("Removing {}", blueprint_path);
                 std::fs::remove_file(&blueprint_path)?;
             }
         }
@@ -189,6 +198,12 @@ fn run() -> Result<()> {
         if !st.success() {
             anyhow::bail!("Failed to execute tree: {st:?}");
         }
+    } else {
+        if should_consume {
+            println!("Removing self: {self_path:?}");
+            std::fs::remove_file(&self_path).with_context(|| format!("Removing {self_path:?}"))?;
+        }
+        println!("Execution complete.");
     }
 
     Ok(())
