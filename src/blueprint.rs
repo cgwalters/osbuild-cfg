@@ -88,6 +88,9 @@ impl Render for Packages {
             .chain(packages)
             .collect::<Vec<_>>();
         out.exec.push(crate::ExecuteCommand(cmd));
+        out.exec_cleanup
+            .entry("dnf-clean".to_owned())
+            .or_insert_with(|| crate::ExecuteCommand::new(["dnf", "clean", "all"]));
         Ok(true)
     }
 }
