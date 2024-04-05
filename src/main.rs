@@ -4,6 +4,7 @@
 pub(crate) mod blueprint;
 mod osrelease;
 
+use std::collections::BTreeMap;
 use std::process::Command;
 use std::{io::Read, path::Path};
 
@@ -50,8 +51,10 @@ pub(crate) struct ExecuteCommand(Vec<String>);
 
 /// The rendered output
 pub(crate) struct Rendered<'d> {
-    /// Generated bash code
+    /// "default phase" commands to accomplish primary tasks, e.g. "dnf install"
     pub(crate) exec: Vec<ExecuteCommand>,
+    /// "cleanup commands" such as "dnf clean all"
+    pub(crate) exec_cleanup: BTreeMap<String, ExecuteCommand>,
     pub(crate) filesystem: &'d Dir,
 }
 
@@ -59,7 +62,8 @@ impl<'d> Rendered<'d> {
     #[context("Creating new rendered data")]
     pub(crate) fn new(filesystem: &'d Dir) -> Result<Self> {
         Ok(Self {
-            exec: Vec::new(),
+            exec: Default::default(),
+            exec_cleanup: Default::default(),
             filesystem,
         })
     }
@@ -101,6 +105,27 @@ pub(crate) fn reader_or_stdin(p: &Utf8Path) -> Result<impl Read> {
         }
     };
     Ok(r)
+}
+
+impl ExecuteCommand {
+    pub(crate) fn new<S: AsRef<str>>(args: impl IntoIterator<Item = S>) -> Self {
+        Self(args.into_iter().map(|s| s.as_ref().to_owned()).collect())
+    }
+
+    pub(crate) fn execute(&self, dry_run: bool) -> Result<()> {
+        println!("+ {:?}", self.0);
+        if dry_run {
+            return Ok(());
+        }
+        let mut cmd = self.0.iter();
+        let prog = cmd.next().unwrap();
+
+        let st = Command::new(&prog).args(cmd).status()?;
+        if !st.success() {
+            anyhow::bail!("Failed to execute {prog}");
+        }
+        Ok(())
+    }
 }
 
 fn run() -> Result<()> {
@@ -179,17 +204,12 @@ fn run() -> Result<()> {
         println!("(No commands to execute)");
     }
     for cmd in rendered.exec {
-        println!("+ {:?}", cmd.0);
-        if dry_run {
-            continue;
-        }
-        let mut cmd = cmd.0.into_iter();
-        let prog = cmd.next().unwrap();
+        cmd.execute(dry_run)?;
+    }
 
-        let st = Command::new(&prog).args(cmd).status()?;
-        if !st.success() {
-            anyhow::bail!("Failed to execute {prog}");
-        }
+    for (name, cmd) in rendered.exec_cleanup {
+        tracing::debug!("Executing cleanup {name}");
+        cmd.execute(dry_run)?;
     }
 
     if let Some(td) = opt.dry_run_output.as_deref() {
